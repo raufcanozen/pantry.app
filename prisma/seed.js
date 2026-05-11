@@ -3,11 +3,11 @@ const prisma = new PrismaClient();
 
 async function main() {
   const locations = [
-    { name: "Buzdolabı" },
-    { name: "Dondurucu" },
-    { name: "Kiler" },
-    { name: "Dolap"},
-  ];
+  { name: "Buzdolabı", icon: "B" },
+  { name: "Dondurucu", icon: "D" },
+  { name: "Kiler", icon: "K" },
+  { name: "Dolap", icon: "Dl" },
+];
 
   const categories = [
     "Süt Ürünleri",
