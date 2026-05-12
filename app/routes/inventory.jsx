@@ -1,4 +1,4 @@
-import { useLoaderData, useSearchParams, Link } from "react-router";
+import { useLoaderData, useSearchParams, useFetcher, Link } from "react-router";
 import { prisma } from "~/db.server";
 import { expiryStatus, formatExpiry } from "~/utils/date.js";
 
@@ -74,11 +74,11 @@ export default function Inventory() {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold text-slate-800">Envanter</h2>
         <Link
-  to="/inventory/new"
-  className="px-4 py-2 bg-emerald-600 text-white rounded-md text-sm font-medium hover:bg-emerald-700 transition"
->
-  + Ürün Ekle
-</Link>
+          to="/inventory/new"
+          className="px-4 py-2 bg-emerald-600 text-white rounded-md text-sm font-medium hover:bg-emerald-700 transition"
+        >
+          + Ürün Ekle
+        </Link>
       </div>
 
       <div className="flex items-center gap-4 mb-6 pb-4 border-b border-slate-200">
@@ -125,36 +125,9 @@ export default function Inventory() {
         </div>
       ) : (
         <ul className="space-y-2">
-          {items.map((item) => {
-            const status = expiryStatus(item.expiryDate);
-            return (
-              <li
-                key={item.id}
-                className={`flex items-center gap-4 px-4 py-3 border border-slate-200 border-l-4 rounded-md ${statusStyles[status]}`}
-              >
-                <div className="flex-1">
-                  <div className="font-medium text-slate-800">{item.name}</div>
-                  {item.category && (
-                    <div className="text-xs text-slate-500 mt-0.5">
-                      {item.category.name}
-                    </div>
-                  )}
-                </div>
-
-                <div className="text-sm text-slate-600 w-20 text-right">
-                  {item.quantity} {item.unit}
-                </div>
-
-                <div className="text-sm text-slate-600 w-24">
-                  {item.location.name}
-                </div>
-
-                <div className={`text-sm w-24 text-right ${statusTextStyles[status]}`}>
-                  {formatExpiry(item.expiryDate)}
-                </div>
-              </li>
-            );
-          })}
+          {items.map((item) => (
+            <ItemRow key={item.id} item={item} />
+          ))}
         </ul>
       )}
 
@@ -162,6 +135,82 @@ export default function Inventory() {
         Toplam {items.length} ürün listeleniyor
       </div>
     </div>
+  );
+}
+
+function ItemRow({ item }) {
+  const status = expiryStatus(item.expiryDate);
+  const fetcher = useFetcher();
+  const isProcessing = fetcher.state !== "idle";
+
+  function handleConsume() {
+    fetcher.submit(
+      { intent: "consume", itemId: item.id },
+      { method: "post", action: "/inventory/actions" }
+    );
+  }
+
+  function handleDelete() {
+    if (!confirm(`"${item.name}" silinsin mi?`)) return;
+    fetcher.submit(
+      { intent: "delete", itemId: item.id },
+      { method: "post", action: "/inventory/actions" }
+    );
+  }
+
+  return (
+    <li
+      className={`flex items-center gap-4 px-4 py-3 border border-slate-200 border-l-4 rounded-md ${statusStyles[status]} ${
+        isProcessing ? "opacity-50" : ""
+      }`}
+    >
+      <div className="flex-1 min-w-0">
+        <div className="font-medium text-slate-800 truncate">{item.name}</div>
+        {item.category && (
+          <div className="text-xs text-slate-500 mt-0.5">
+            {item.category.name}
+          </div>
+        )}
+      </div>
+
+      <div className="text-sm text-slate-600 w-20 text-right">
+        {item.quantity} {item.unit}
+      </div>
+
+      <div className="text-sm text-slate-600 w-24">{item.location.name}</div>
+
+      <div
+        className={`text-sm w-20 text-right ${statusTextStyles[status]}`}
+      >
+        {formatExpiry(item.expiryDate)}
+      </div>
+
+      <div className="flex items-center gap-1">
+        <Link
+          to={`/inventory/${item.id}/edit`}
+          className="px-2 py-1 text-xs text-slate-600 hover:bg-slate-100 rounded transition"
+          title="Düzenle"
+        >
+          Düzenle
+        </Link>
+        <button
+          onClick={handleConsume}
+          disabled={isProcessing}
+          className="px-2 py-1 text-xs text-emerald-700 hover:bg-emerald-50 rounded transition disabled:opacity-50"
+          title="Tüketildi olarak işaretle"
+        >
+          Kullandım
+        </button>
+        <button
+          onClick={handleDelete}
+          disabled={isProcessing}
+          className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded transition disabled:opacity-50"
+          title="Sil"
+        >
+          Sil
+        </button>
+      </div>
+    </li>
   );
 }
 
