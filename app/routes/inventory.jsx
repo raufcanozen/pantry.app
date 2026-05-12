@@ -73,9 +73,12 @@ export default function Inventory() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold text-slate-800">Envanter</h2>
-        <button className="px-4 py-2 bg-emerald-600 text-white rounded-md text-sm font-medium hover:bg-emerald-700 transition">
-          + Ürün Ekle
-        </button>
+        <Link
+  to="/inventory/new"
+  className="px-4 py-2 bg-emerald-600 text-white rounded-md text-sm font-medium hover:bg-emerald-700 transition"
+>
+  + Ürün Ekle
+</Link>
       </div>
 
       <div className="flex items-center gap-4 mb-6 pb-4 border-b border-slate-200">
