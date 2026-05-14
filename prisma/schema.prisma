@@ -18,6 +18,7 @@ model Item {
   name         String
   quantity     Float      @default(1)
   unit         String     @default("adet")
+  unitPrice    Float?
   expiryDate   DateTime?
   locationId   String
   location     Location   @relation(fields: [locationId], references: [id])

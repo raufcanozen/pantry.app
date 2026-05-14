@@ -113,7 +113,7 @@ export default function Inventory() {
           </select>
         </div>
       </div>
-
+nd
       {items.length === 0 ? (
         <div className="text-center py-16 text-slate-400">
           <p>
@@ -176,6 +176,17 @@ function ItemRow({ item }) {
       <div className="text-sm text-slate-600 w-20 text-right">
         {item.quantity} {item.unit}
       </div>
+       
+     <div className="w-24 text-right">
+      <div className="text-sm text-slate-600">
+    {item.quantity} {item.unit}
+      </div>
+  {item.unitPrice && (
+       <div className="text-xs text-slate-500 mt-0.5">
+      {(item.quantity * item.unitPrice).toFixed(2)} TL
+       </div>
+  )}
+     </div>
 
       <div className="text-sm text-slate-600 w-24">{item.location.name}</div>
 
@@ -186,30 +197,37 @@ function ItemRow({ item }) {
       </div>
 
       <div className="flex items-center gap-1">
-        <Link
-          to={`/inventory/${item.id}/edit`}
-          className="px-2 py-1 text-xs text-slate-600 hover:bg-slate-100 rounded transition"
-          title="Düzenle"
-        >
-          Düzenle
-        </Link>
-        <button
-          onClick={handleConsume}
-          disabled={isProcessing}
-          className="px-2 py-1 text-xs text-emerald-700 hover:bg-emerald-50 rounded transition disabled:opacity-50"
-          title="Tüketildi olarak işaretle"
-        >
-          Kullandım
-        </button>
-        <button
-          onClick={handleDelete}
-          disabled={isProcessing}
-          className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded transition disabled:opacity-50"
-          title="Sil"
-        >
-          Sil
-        </button>
-      </div>
+  <Link
+    to={`/inventory/${item.id}/edit`}
+    className="px-2 py-1 text-xs text-slate-600 hover:bg-slate-100 rounded transition"
+    title="Düzenle"
+  >
+    Düzenle
+  </Link>
+  <button
+    onClick={handleConsume}
+    disabled={isProcessing}
+    className="px-2 py-1 text-xs text-emerald-700 hover:bg-emerald-50 rounded transition disabled:opacity-50"
+    title="Tüketildi olarak işaretle"
+  >
+    Kullandım
+  </button>
+  <Link
+    to={`/inventory/${item.id}/waste`}
+    className="px-2 py-1 text-xs text-amber-700 hover:bg-amber-50 rounded transition"
+    title="İsraf olarak kaydet"
+  >
+    Attım
+  </Link>
+  <button
+    onClick={handleDelete}
+    disabled={isProcessing}
+    className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded transition disabled:opacity-50"
+    title="Sil"
+  >
+    Sil
+  </button>
+</div>
     </li>
   );
 }

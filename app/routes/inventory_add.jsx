@@ -7,20 +7,19 @@ export function meta() {
 }
 
 export async function loader() {
-  const [locations, categories] = await Promise.all([
-    prisma.location.findMany({ orderBy: { name: "asc" } }),
-    prisma.category.findMany({ orderBy: { name: "asc" } }),
-  ]);
-  return { locations, categories };
+  const locations = await prisma.location.findMany({
+    orderBy: { name: "asc" },
+  });
+  return { locations };
 }
 
 const ItemSchema = z.object({
   name: z.string().trim().min(1, "Ürün adı zorunlu").max(100, "Ürün adı çok uzun"),
   quantity: z.coerce.number().positive("Miktar pozitif olmalı"),
   unit: z.string().trim().min(1, "Birim zorunlu"),
-  locationId: z.string().min(1, "Saklama Yeri seçin"),
-  categoryId: z.string().optional(),
-  expiryDate: z.string().min(1,"Son kullanma tarihi girmek zorunludur"),
+  unitPrice: z.coerce.number().positive("Birim fiyat pozitif olmalı"),
+  locationId: z.string().min(1, "Saklama yeri seçin"),
+  expiryDate: z.string().min(1, "Son kullanma tarihi zorunlu"),
 });
 
 export async function action({ request }) {
@@ -44,9 +43,9 @@ export async function action({ request }) {
       name: data.name,
       quantity: data.quantity,
       unit: data.unit,
+      unitPrice: data.unitPrice,
       locationId: data.locationId,
-      categoryId: data.categoryId || null,
-      expiryDate: data.expiryDate ? new Date(data.expiryDate) : null,
+      expiryDate: new Date(data.expiryDate),
     },
   });
 
@@ -54,7 +53,7 @@ export async function action({ request }) {
 }
 
 export default function NewItem() {
-  const { locations, categories } = useLoaderData();
+  const { locations } = useLoaderData();
   const actionData = useActionData();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
@@ -116,42 +115,41 @@ export default function NewItem() {
           </Field>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Saklama Yeri" error={errors.locationId}>
-            <select
-              name="locationId"
-              defaultValue={values.locationId || ""}
-              className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white focus:outline-none focus:border-emerald-500"
-            >
-              <option value="">Seçin...</option>
-              {locations.map((loc) => (
-                <option key={loc.id} value={loc.id}>
-                  {loc.name}
-                </option>
-              ))}
-            </select>
-          </Field>
+        <Field label="Birim Fiyat (TL)" error={errors.unitPrice}>
+          <input
+            type="number"
+            name="unitPrice"
+            step="0.01"
+            min="0"
+            defaultValue={values.unitPrice || ""}
+            placeholder="örn: 25"
+            className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:border-emerald-500"
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            Toplam maliyet otomatik hesaplanacak (miktar × birim fiyat).
+          </p>
+        </Field>
 
-          <Field label="Kategori" error={errors.categoryId}>
-            <select
-              name="categoryId"
-              defaultValue={values.categoryId || ""}
-              className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white focus:outline-none focus:border-emerald-500"
-            >
-              <option value="">Belirtme</option>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </div>
+        <Field label="Saklama Yeri" error={errors.locationId}>
+          <select
+            name="locationId"
+            defaultValue={values.locationId || ""}
+            className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white focus:outline-none focus:border-emerald-500"
+          >
+            <option value="">Seçin...</option>
+            {locations.map((loc) => (
+              <option key={loc.id} value={loc.id}>
+                {loc.name}
+              </option>
+            ))}
+          </select>
+        </Field>
 
         <Field label="Son Kullanma Tarihi" error={errors.expiryDate}>
           <input
             type="date"
             name="expiryDate"
+            required
             defaultValue={values.expiryDate || ""}
             className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:border-emerald-500"
           />
@@ -184,9 +182,7 @@ function Field({ label, error, children }) {
         {label}
       </label>
       {children}
-      {error && (
-        <p className="mt-1 text-sm text-red-600">{error}</p>
-      )}
+      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
     </div>
   );
 }
