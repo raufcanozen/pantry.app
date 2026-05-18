@@ -62,3 +62,18 @@ model ShoppingListItem {
   note         String?
   createdAt    DateTime @default(now())
 }
+
+
+model Dish {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  ingredients DishIngredient[]
+  createdAt   DateTime         @default(now())
+}
+
+model DishIngredient {
+  id       String @id @default(cuid())
+  dishId   String
+  dish     Dish   @relation(fields: [dishId], references: [id], onDelete: Cascade)
+  name     String
+}

@@ -8,6 +8,7 @@ export default [
     route("inventory/:itemId/edit", "routes/inventory_edit.jsx"),
     route("inventory/:itemId/waste", "routes/inventory_waste.jsx"),
     route("inventory/actions", "routes/inventory_actions.jsx"),
+    route("shopping/actions", "routes/shopping_actions.jsx"),
     route("kitchen", "routes/kitchen.jsx"),
     route("waste", "routes/waste.jsx"),
     route("stats", "routes/stats.jsx"),
