@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
   provider = "prisma-client-js"
@@ -11,6 +6,17 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String             @id @default(cuid())
+  email         String             @unique
+  passwordHash  String
+  createdAt     DateTime           @default(now())
+
+  items         Item[]
+  wasteLogs     WasteLog[]
+  shoppingItems ShoppingListItem[]
 }
 
 model Item {
@@ -24,6 +30,8 @@ model Item {
   location     Location   @relation(fields: [locationId], references: [id])
   categoryId   String?
   category     Category?  @relation(fields: [categoryId], references: [id])
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   purchasedAt  DateTime   @default(now())
   consumedAt   DateTime?
   createdAt    DateTime   @default(now())
@@ -48,6 +56,8 @@ model WasteLog {
   id            String   @id @default(cuid())
   itemId        String
   item          Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   reason        String
   quantity      Float
   estimatedCost Float?
@@ -60,9 +70,10 @@ model ShoppingListItem {
   isPurchased  Boolean  @default(false)
   isAutoAdded  Boolean  @default(false)
   note         String?
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt    DateTime @default(now())
 }
-
 
 model Dish {
   id          String           @id @default(cuid())
@@ -77,3 +88,11 @@ model DishIngredient {
   dish     Dish   @relation(fields: [dishId], references: [id], onDelete: Cascade)
   name     String
 }
+
+
+
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init

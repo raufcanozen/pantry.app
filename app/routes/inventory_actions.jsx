@@ -1,13 +1,24 @@
 import { redirect } from "react-router";
+import { requireUserId } from "~/auth_server";
 import { prisma } from "~/db.server";
 
 export async function action({ request }) {
+  const userId = await requireUserId(request);
   const formData = await request.formData();
   const intent = formData.get("intent");
   const itemId = formData.get("itemId");
 
   if (!itemId) {
     return { error: "Ürün ID gerekli" };
+  }
+
+  // Ownership doğrulaması
+  const item = await prisma.item.findFirst({
+    where: { id: itemId, userId },
+  });
+
+  if (!item) {
+    return { error: "Ürün bulunamadı" };
   }
 
   if (intent === "consume") {
@@ -27,9 +38,6 @@ export async function action({ request }) {
 
   return { error: "Geçersiz işlem" };
 }
-
-// Resource route'lar default export'a ihtiyaç duymaz
-// ama React Router şikayet etmesin diye boş bir loader ekleyebiliriz
 export async function loader() {
   return redirect("/inventory");
 }

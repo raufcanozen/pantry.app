@@ -1,12 +1,14 @@
 import { Form, Link, useActionData, useLoaderData, useNavigation, redirect } from "react-router";
+import { requireUserId } from "~/auth_server";
 import { z } from "zod";
 import { prisma } from "~/db.server";
 
 export function meta() {
-  return [{ title: "Yeni Ürün | Dolapta Ne Var?" }];
+  return [{ title: "Yeni Ürün | Mutfak Yöneticisi" }];
 }
 
-export async function loader() {
+export async function loader({request}) {
+  await requireUserId(request);
   const locations = await prisma.location.findMany({
     orderBy: { name: "asc" },
   });
@@ -23,6 +25,7 @@ const ItemSchema = z.object({
 });
 
 export async function action({ request }) {
+  const userId = await requireUserId(request);
   const formData = await request.formData();
   const raw = Object.fromEntries(formData);
 
@@ -46,6 +49,7 @@ export async function action({ request }) {
       unitPrice: data.unitPrice,
       locationId: data.locationId,
       expiryDate: new Date(data.expiryDate),
+      userId,
     },
   });
 

@@ -1,8 +1,9 @@
 import { useLoaderData } from "react-router";
+import { requireUserId } from "~/auth_server";
 import { prisma } from "~/db.server";
 
 export function meta() {
-  return [{ title: "İsraf | Dolapta Ne Var?" }];
+  return [{ title: "Zarar | Mutfak Yöneticisi" }];
 }
 
 const REASON_LABELS = {
@@ -14,14 +15,15 @@ const REASON_LABELS = {
   baska: "Başka",
 };
 
-export async function loader() {
-  // Son 7 günün eşik tarihi
+export async function loader({ request }) {
+  const userId = await requireUserId(request);
+
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
   sevenDaysAgo.setHours(0, 0, 0, 0);
 
-  // Tüm israf kayıtları (geçmiş için)
   const logs = await prisma.wasteLog.findMany({
+    where: { userId },
     include: {
       item: {
         include: { category: true, location: true },
@@ -30,13 +32,13 @@ export async function loader() {
     orderBy: { loggedAt: "desc" },
   });
 
-  // Son 7 günde eklenen ürünlerin maliyeti
   const recentItems = await prisma.item.findMany({
     where: {
       createdAt: { gte: sevenDaysAgo },
+      userId,
     },
   });
-
+  
   const weeklyAddedCost = recentItems.reduce((sum, item) => {
     const cost = item.unitPrice ? item.quantity * item.unitPrice : 0;
     return sum + cost;
@@ -104,7 +106,7 @@ export default function Waste() {
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-slate-800 mb-1">İsraf Takibi</h2>
+        <h2 className="text-2xl font-bold text-slate-800 mb-1">Zarar Takibi</h2>
         <p className="text-sm text-slate-500">
           Son 7 günün mutfak ekonomisi
         </p>
@@ -115,33 +117,30 @@ export default function Waste() {
         <CostCard
           label="Eklenen Ürünler"
           value={weekly.addedCost}
-          detail={`${weekly.addedCount} kalem`}
           accent="emerald"
         />
         <CostCard
           label="Atılan Ürünler"
           value={weekly.wastedCost}
-          detail={`${weekly.wastedCount} kayıt`}
           accent="rose"
         />
         <CostCard
           label="Haftalık Toplam"
           value={weekly.totalCost}
-          detail="Son 7 gün"
           accent="slate"
           bold
         />
       </div>
 
-      {/* İsraf geçmişi */}
+      
       <div>
         <h3 className="text-lg font-semibold text-slate-800 mb-3">
-          İsraf Geçmişi
+          Zarar Geçmişi
         </h3>
 
         {logs.length === 0 ? (
           <div className="text-center py-16 text-slate-400">
-            <p>Henüz israf kaydı yok.</p>
+            <p>Henüz zarar kaydı yok.</p>
             <p className="text-sm mt-1">
               Bir ürünü atmak zorunda kaldığında envanterden "Attım" diyebilirsin.
             </p>

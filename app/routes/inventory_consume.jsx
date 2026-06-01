@@ -4,7 +4,7 @@ import { z } from "zod";
 import { prisma } from "~/db.server";
 
 export function meta({ data }) {
-  return [{ title: `${data?.item?.name || "Ürün"} zararı | Mutfak Yöneticisi` }];
+  return [{ title: `${data?.item?.name || "Ürün"} kullanıldı | Mutfak Yöneticisi` }];
 }
 
 export async function loader({ request, params }) {
@@ -22,28 +22,17 @@ export async function loader({ request, params }) {
   return { item };
 }
 
-const REASONS = [
-  { value: "belirtilmedi", label: "Belirtilmedi" },
-  { value: "bozuldu", label: "Bozuldu / küflendi" },
-  { value: "skt_gecti", label: "Son kullanma tarihi geçti" },
-  { value: "unuttum", label: "Unuttum, kullanamadım" },
-  { value: "cok_aldim", label: "Çok almışım, bitmedi" },
-  { value: "baska", label: "Başka" },
-];
-
 export async function action({ request, params }) {
   const userId = await requireUserId(request);
 
   const formData = await request.formData();
   const raw = Object.fromEntries(formData);
 
-  const WasteSchema = z.object({
-    wastedQuantity: z.coerce.number().positive("Atılan miktar pozitif olmalı"),
-    reason: z.string().default("belirtilmedi"),
+  const ConsumeSchema = z.object({
+    consumedQuantity: z.coerce.number().positive("Kullanılan miktar pozitif olmalı"),
   });
 
-  const result = WasteSchema.safeParse(raw);
-
+  const result = ConsumeSchema.safeParse(raw);
   if (!result.success) {
     const fieldErrors = {};
     for (const issue of result.error.issues) {
@@ -60,43 +49,33 @@ export async function action({ request, params }) {
     throw new Response("Ürün bulunamadı", { status: 404 });
   }
 
-  const { wastedQuantity, reason } = result.data;
+  const { consumedQuantity } = result.data;
 
-  if (wastedQuantity > item.quantity) {
+  if (consumedQuantity > item.quantity) {
     return {
-      errors: { wastedQuantity: `En fazla ${item.quantity} ${item.unit} atabilirsin` },
+      errors: { consumedQuantity: `En fazla ${item.quantity} ${item.unit} kullanabilirsin` },
       values: raw,
     };
   }
 
-  const estimatedCost = item.unitPrice ? wastedQuantity * item.unitPrice : null;
-  const isFullyWasted = wastedQuantity >= item.quantity;
+  const isFullyConsumed = consumedQuantity >= item.quantity;
 
-  await prisma.$transaction([
-    prisma.wasteLog.create({
-      data: {
-        itemId: item.id,
-        userId,
-        reason: reason || "belirtilmedi",
-        quantity: wastedQuantity,
-        estimatedCost,
-      },
-    }),
-    isFullyWasted
-      ? prisma.item.update({
-          where: { id: item.id },
-          data: { consumedAt: new Date() },
-        })
-      : prisma.item.update({
-          where: { id: item.id },
-          data: { quantity: item.quantity - wastedQuantity },
-        }),
-  ]);
+  if (isFullyConsumed) {
+    await prisma.item.update({
+      where: { id: item.id },
+      data: { consumedAt: new Date() },
+    });
+  } else {
+    await prisma.item.update({
+      where: { id: item.id },
+      data: { quantity: item.quantity - consumedQuantity },
+    });
+  }
 
   return redirect("/inventory");
 }
 
-export default function WasteItem() {
+export default function ConsumeItem() {
   const { item } = useLoaderData();
   const actionData = useActionData();
   const navigation = useNavigation();
@@ -111,7 +90,7 @@ export default function WasteItem() {
     <div className="max-w-xl">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">Zarar Kaydı</h2>
+          <h2 className="text-2xl font-bold text-slate-800">Kullanıldı</h2>
           <p className="text-sm text-slate-500 mt-1">
             <span className="font-medium text-slate-700">{item.name}</span>
             {" — "}
@@ -130,42 +109,25 @@ export default function WasteItem() {
       <Form method="post" className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">
-            Ne kadarı atıldı? ({item.unit})
+            Ne kadarı kullanıldı? ({item.unit})
           </label>
           <input
             type="number"
-            name="wastedQuantity"
+            name="consumedQuantity"
             step="0.5"
             min="0"
             max={item.quantity}
             required
-            defaultValue={values.wastedQuantity || item.quantity}
-            className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:border-red-500"
+            autoFocus
+            defaultValue={values.consumedQuantity || item.quantity}
+            className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:border-emerald-500"
           />
           <p className="mt-1 text-xs text-slate-500">
-            En fazla {item.quantity} {item.unit}.
-            {item.unitPrice && ` Birim fiyat: ${item.unitPrice.toFixed(2)} TL/${item.unit}.`}
+            En fazla {item.quantity} {item.unit}. Tümünü kullandıysan olduğu gibi bırak.
           </p>
-          {errors.wastedQuantity && (
-            <p className="mt-1 text-sm text-red-600">{errors.wastedQuantity}</p>
+          {errors.consumedQuantity && (
+            <p className="mt-1 text-sm text-red-600">{errors.consumedQuantity}</p>
           )}
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
-            Sebep (opsiyonel)
-          </label>
-          <select
-            name="reason"
-            defaultValue={values.reason || "belirtilmedi"}
-            className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white focus:outline-none focus:border-red-500"
-          >
-            {REASONS.map((r) => (
-              <option key={r.value} value={r.value}>
-                {r.label}
-              </option>
-            ))}
-          </select>
         </div>
 
         <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
@@ -178,7 +140,7 @@ export default function WasteItem() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="px-5 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition"
+            className="px-5 py-2 bg-emerald-600 text-white rounded-md text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 transition"
           >
             {isSubmitting ? "Kaydediliyor..." : "Kaydet"}
           </button>

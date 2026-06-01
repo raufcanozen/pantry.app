@@ -1,25 +1,26 @@
 import { useLoaderData, useFetcher } from "react-router";
+import { requireUserId } from "~/auth_server";
 import { prisma } from "~/db.server";
 import { ingredientMatches } from "~/utils/match.js";
 
 export function meta() {
-  return [{ title: "Bugün Ne Pişsin? | Dolapta Ne Var?" }];
+  return [{ title: "Bugün Ne Pişsin? | Mutfak Yöneticisi" }];
 }
 
-export async function loader() {
-  // Envanterdeki aktif ürünler (tüketilmemiş)
+export async function loader({request}) {
+  const userId = await requireUserId(request);
   const items = await prisma.item.findMany({
     where: { consumedAt: null },
     select: { name: true },
   });
 
-  // Tüm yemekler ve malzemeleri
+  
   const dishes = await prisma.dish.findMany({
     include: { ingredients: true },
     orderBy: { name: "asc" },
   });
 
-  // Her yemek için eşleşme hesapla
+ 
   const enriched = dishes.map((dish) => {
     const available = [];
     const missing = [];
@@ -46,7 +47,7 @@ export async function loader() {
     };
   });
 
-  // %50 ve üzeri eşleşenleri filtrele, eşleşme yüzdesine göre sırala
+  
   const filtered = enriched
     .filter((d) => d.matchPercent >= 50)
     .sort((a, b) => b.matchPercent - a.matchPercent);
@@ -96,17 +97,6 @@ export default function Kitchen() {
 }
 
 function DishCard({ dish }) {
-  const fetcher = useFetcher();
-  const isAdding = fetcher.state !== "idle";
-
-  function addMissingToShoppingList() {
-    if (dish.missing.length === 0) return;
-    fetcher.submit(
-      { intent: "add_missing", items: JSON.stringify(dish.missing) },
-      { method: "post", action: "/shopping/actions" }
-    );
-  }
-
   const matchColor =
     dish.matchPercent === 100
       ? "text-emerald-700 bg-emerald-100"
@@ -130,7 +120,7 @@ function DishCard({ dish }) {
           </div>
           <ul className="space-y-0.5">
             {dish.available.map((ing) => (
-              <li key={ing} className="text-slate-700">
+              <li key={ing} className="text-slate-700 capitalize">
                 {ing}
               </li>
             ))}
@@ -144,25 +134,42 @@ function DishCard({ dish }) {
           {dish.missing.length === 0 ? (
             <p className="text-slate-500 italic">Hepsi sende</p>
           ) : (
-            <>
-              <ul className="space-y-0.5 mb-2">
-                {dish.missing.map((ing) => (
-                  <li key={ing} className="text-slate-700">
-                    {ing}
-                  </li>
-                ))}
-              </ul>
-              <button
-                onClick={addMissingToShoppingList}
-                disabled={isAdding}
-                className="text-xs px-2 py-1 bg-slate-800 text-white rounded hover:bg-slate-900 disabled:opacity-50 transition"
-              >
-                {isAdding ? "Ekleniyor..." : "Alışveriş listesine ekle"}
-              </button>
-            </>
+            <ul className="space-y-1">
+              {dish.missing.map((ing) => (
+                <MissingIngredientRow key={ing} name={ing} />
+              ))}
+            </ul>
           )}
         </div>
       </div>
+    </li>
+  );
+}
+
+function MissingIngredientRow({ name }) {
+  const fetcher = useFetcher();
+  const isAdding = fetcher.state !== "idle";
+  const isAdded = fetcher.data?.success === true;
+
+  return (
+    <li className="flex items-center justify-between gap-2">
+      <span className="text-slate-700 capitalize">{name}</span>
+      {isAdded ? (
+        <span className="text-xs text-emerald-700 font-medium">Eklendi</span>
+      ) : (
+        <fetcher.Form method="post" action="/shopping/actions">
+          <input type="hidden" name="intent" value="add_manual" />
+          <input type="hidden" name="name" value={name} />
+          <button
+  type="submit"
+  disabled={isAdding}
+  className="px-3 py-1 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 hover:border-slate-400 disabled:opacity-50 transition"
+  title="Alışveriş listesine ekle"
+>
+  {isAdding ? "..." : "+ Ekle"}
+</button>
+        </fetcher.Form>
+      )}
     </li>
   );
 }

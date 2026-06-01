@@ -1,20 +1,22 @@
 import { Form, Link, useActionData, useLoaderData, useNavigation, redirect } from "react-router";
+import { requireUserId } from "~/auth_server";
 import { z } from "zod";
 import { prisma } from "~/db.server";
 
 export function meta({ data }) {
-  return [{ title: `${data?.item?.name || "Ürün"} düzenle | Dolapta Ne Var?` }];
+  return [{ title: `${data?.item?.name || "Ürün"} düzenle | Mutfak Yöneticisi` }];
 }
 
-export async function loader({ params }) {
-  const item = await prisma.item.findUnique({
-    where: { id: params.itemId },
+export async function loader({ request, params }) {
+  const userId = await requireUserId(request);
+
+  const item = await prisma.item.findFirst({
+    where: { id: params.itemId, userId },
   });
 
   if (!item) {
     throw new Response("Ürün bulunamadı", { status: 404 });
   }
-
   const locations = await prisma.location.findMany({
     orderBy: { name: "asc" },
   });

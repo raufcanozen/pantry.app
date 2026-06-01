@@ -1,21 +1,33 @@
 import { useLoaderData, useSearchParams, useFetcher, Link } from "react-router";
+import { PackageOpen, Search } from "lucide-react";
+import { requireUserId } from "~/auth_server";
 import { prisma } from "~/db.server";
 import { expiryStatus, formatExpiry } from "~/utils/date.js";
 
 export function meta() {
-  return [{ title: "Envanter | Dolapta Ne Var?" }];
+  return [{ title: "Envanter | Mutfak Yöneticisi" }];
 }
 
 export async function loader({ request }) {
+  const userId = await requireUserId(request);
   const url = new URL(request.url);
   const locationId = url.searchParams.get("location");
   const sort = url.searchParams.get("sort") || "expiry";
+  const query = url.searchParams.get("q")?.trim() || "";
 
   const where = {
     consumedAt: null,
+     userId,
     ...(locationId ? { locationId } : {}),
+    ...(query
+      ? {
+          name: {
+            contains: query,
+            mode: "insensitive",
+          },
+        }
+      : {}),
   };
-
   const orderBy =
     sort === "name"
       ? { name: "asc" }
@@ -36,7 +48,7 @@ export async function loader({ request }) {
     orderBy: { name: "asc" },
   });
 
-  return { items, locations, currentLocation: locationId, currentSort: sort };
+  return { items, locations, currentLocation: locationId, currentSort: sort, currentQuery: query };
 }
 
 const statusStyles = {
@@ -54,7 +66,7 @@ const statusTextStyles = {
 };
 
 export default function Inventory() {
-  const { items, locations, currentLocation, currentSort } = useLoaderData();
+  const { items, locations, currentLocation, currentSort, currentQuery } = useLoaderData();
   const [searchParams, setSearchParams] = useSearchParams();
 
   function setSort(value) {
@@ -71,15 +83,35 @@ export default function Inventory() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-slate-800">Envanter</h2>
-        <Link
-          to="/inventory/new"
-          className="px-4 py-2 bg-emerald-600 text-white rounded-md text-sm font-medium hover:bg-emerald-700 transition"
-        >
-          + Ürün Ekle
-        </Link>
-      </div>
+      <div className="flex items-center justify-between gap-4 mb-6">
+  <h2 className="text-2xl font-bold text-slate-800 shrink-0">Envanter</h2>
+
+  <div className="relative flex-1 max-w-sm">
+    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" strokeWidth={1.75} />
+    <input
+      type="search"
+      placeholder="Ürün ara..."
+      value={currentQuery}
+      onChange={(e) => {
+        const params = new URLSearchParams(searchParams);
+        if (e.target.value) {
+          params.set("q", e.target.value);
+        } else {
+          params.delete("q");
+        }
+        setSearchParams(params, { replace: true });
+      }}
+      className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:border-emerald-500"
+    />
+  </div>
+
+  <Link
+    to="/inventory/new"
+    className="px-4 py-2 bg-emerald-600 text-white rounded-md text-sm font-medium hover:bg-emerald-700 transition shrink-0"
+  >
+    + Ürün Ekle
+  </Link>
+</div>
 
       <div className="flex items-center gap-4 mb-6 pb-4 border-b border-slate-200">
         <div className="flex items-center gap-2">
@@ -113,17 +145,27 @@ export default function Inventory() {
           </select>
         </div>
       </div>
-nd
+
       {items.length === 0 ? (
-        <div className="text-center py-16 text-slate-400">
-          <p>
-            {currentLocation
-              ? "Bu lokasyonda ürün yok."
-              : "Henüz ürün eklenmedi."}
-          </p>
-          <p className="text-sm mt-1">"Ürün Ekle" ile başla.</p>
-        </div>
-      ) : (
+  <div className="text-center py-16">
+    <PackageOpen className="w-12 h-12 mx-auto text-slate-300 mb-3" strokeWidth={1.5} />
+    <p className="text-slate-500">
+      {currentQuery
+        ? `"${currentQuery}" için sonuç bulunamadı.`
+        : currentLocation
+        ? "Bu lokasyonda ürün yok."
+        : "Henüz ürün eklenmedi."}
+    </p>
+    {!currentLocation && !currentQuery && (
+      <Link
+        to="/inventory/new"
+        className="inline-block mt-4 px-4 py-2 bg-emerald-600 text-white rounded-md text-sm font-medium hover:bg-emerald-700 transition"
+      >
+        Ürün Ekle
+      </Link>
+    )}
+  </div>
+) : (
         <ul className="space-y-2">
           {items.map((item) => (
             <ItemRow key={item.id} item={item} />
@@ -142,13 +184,6 @@ function ItemRow({ item }) {
   const status = expiryStatus(item.expiryDate);
   const fetcher = useFetcher();
   const isProcessing = fetcher.state !== "idle";
-
-  function handleConsume() {
-    fetcher.submit(
-      { intent: "consume", itemId: item.id },
-      { method: "post", action: "/inventory/actions" }
-    );
-  }
 
   function handleDelete() {
     if (!confirm(`"${item.name}" silinsin mi?`)) return;
@@ -196,34 +231,29 @@ function ItemRow({ item }) {
         {formatExpiry(item.expiryDate)}
       </div>
 
-      <div className="flex items-center gap-1">
+     <div className="flex items-center gap-2">
   <Link
     to={`/inventory/${item.id}/edit`}
-    className="px-2 py-1 text-xs text-slate-600 hover:bg-slate-100 rounded transition"
-    title="Düzenle"
+    className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 hover:border-slate-400 transition"
   >
     Düzenle
   </Link>
-  <button
-    onClick={handleConsume}
-    disabled={isProcessing}
-    className="px-2 py-1 text-xs text-emerald-700 hover:bg-emerald-50 rounded transition disabled:opacity-50"
-    title="Tüketildi olarak işaretle"
+  <Link
+    to={`/inventory/${item.id}/consume`}
+    className="px-3 py-1.5 text-xs font-medium text-emerald-700 bg-white border border-emerald-300 rounded-md hover:bg-emerald-50 hover:border-emerald-500 transition"
   >
-    Kullandım
-  </button>
+    Kullanıldı
+  </Link>
   <Link
     to={`/inventory/${item.id}/waste`}
-    className="px-2 py-1 text-xs text-amber-700 hover:bg-amber-50 rounded transition"
-    title="İsraf olarak kaydet"
+    className="px-3 py-1.5 text-xs font-medium text-amber-700 bg-white border border-amber-300 rounded-md hover:bg-amber-50 hover:border-amber-500 transition"
   >
-    Attım
+    Atıldı
   </Link>
   <button
     onClick={handleDelete}
     disabled={isProcessing}
-    className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded transition disabled:opacity-50"
-    title="Sil"
+    className="px-3 py-1.5 text-xs font-medium text-red-600 bg-white border border-red-300 rounded-md hover:bg-red-50 hover:border-red-500 disabled:opacity-50 transition"
   >
     Sil
   </button>
