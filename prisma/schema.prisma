@@ -1,0 +1,98 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String             @id @default(cuid())
+  email         String             @unique
+  passwordHash  String
+  createdAt     DateTime           @default(now())
+
+  items         Item[]
+  wasteLogs     WasteLog[]
+  shoppingItems ShoppingListItem[]
+}
+
+model Item {
+  id           String     @id @default(cuid())
+  name         String
+  quantity     Float      @default(1)
+  unit         String     @default("adet")
+  unitPrice    Float?
+  expiryDate   DateTime?
+  locationId   String
+  location     Location   @relation(fields: [locationId], references: [id])
+  categoryId   String?
+  category     Category?  @relation(fields: [categoryId], references: [id])
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purchasedAt  DateTime   @default(now())
+  consumedAt   DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  wasteLogs    WasteLog[]
+}
+
+model Location {
+  id    String  @id @default(cuid())
+  name  String  @unique
+  icon  String?
+  items Item[]
+}
+
+model Category {
+  id    String @id @default(cuid())
+  name  String @unique
+  items Item[]
+}
+
+model WasteLog {
+  id            String   @id @default(cuid())
+  itemId        String
+  item          Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reason        String
+  quantity      Float
+  estimatedCost Float?
+  loggedAt      DateTime @default(now())
+}
+
+model ShoppingListItem {
+  id           String   @id @default(cuid())
+  name         String
+  isPurchased  Boolean  @default(false)
+  isAutoAdded  Boolean  @default(false)
+  note         String?
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+}
+
+model Dish {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  ingredients DishIngredient[]
+  createdAt   DateTime         @default(now())
+}
+
+model DishIngredient {
+  id       String @id @default(cuid())
+  dishId   String
+  dish     Dish   @relation(fields: [dishId], references: [id], onDelete: Cascade)
+  name     String
+}
+
+
+
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
