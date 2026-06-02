@@ -33,7 +33,6 @@ const REASONS = [
 
 export async function action({ request, params }) {
   const userId = await requireUserId(request);
-
   const formData = await request.formData();
   const raw = Object.fromEntries(formData);
 

@@ -1,4 +1,5 @@
 import { useLoaderData, Link, useSearchParams } from "react-router";
+import { requireUserId } from "~/auth_server";
 import { prisma } from "~/db.server";
 
 export function meta() {
@@ -6,6 +7,7 @@ export function meta() {
 }
 
 export async function loader({ request }) {
+  const userId = await requireUserId(request);
   const url = new URL(request.url);
   const type = url.searchParams.get("type") || "added";
   const range = url.searchParams.get("range") || "30d";
@@ -27,7 +29,7 @@ export async function loader({ request }) {
 
   if (type === "added") {
     const items = await prisma.item.findMany({
-      where: { createdAt: { gte: since } },
+      where: { createdAt: { gte: since }, userId,},
       include: { location: true },
       orderBy: { createdAt: "desc" },
     });
@@ -43,7 +45,7 @@ export async function loader({ request }) {
     }));
   } else {
     const logs = await prisma.wasteLog.findMany({
-      where: { loggedAt: { gte: since } },
+      where: { loggedAt: { gte: since }, userId,},
       include: {
         item: {
           include: { location: true },

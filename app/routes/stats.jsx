@@ -1,4 +1,5 @@
 import { useLoaderData } from "react-router";
+import { requireUserId } from "~/auth_server";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from "recharts";
 import { prisma } from "~/db.server";
 
@@ -6,16 +7,16 @@ export function meta() {
   return [{ title: "İstatistik | Mutfak Yöneticisi" }];
 }
 
-export async function loader() {
-  // Son 6 ayın verisi
+export async function loader({request}) {
+  const userId = await requireUserId(request);
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
   sixMonthsAgo.setDate(1);
   sixMonthsAgo.setHours(0, 0, 0, 0);
 
-  // Tüm eklenen ürünler (son 6 ay)
+
   const recentItems = await prisma.item.findMany({
-    where: { createdAt: { gte: sixMonthsAgo } },
+    where: { createdAt: { gte: sixMonthsAgo }, userId },
     select: {
       createdAt: true,
       quantity: true,
@@ -24,16 +25,14 @@ export async function loader() {
     },
   });
 
-  // Tüm zarar kayıtları (son 6 ay)
   const recentWaste = await prisma.wasteLog.findMany({
-    where: { loggedAt: { gte: sixMonthsAgo } },
+    where: { loggedAt: { gte: sixMonthsAgo }, userId },
     include: {
       item: { select: { name: true } },
     },
     orderBy: { loggedAt: "desc" },
   });
 
-  // Ay bazında gruplama
   const monthlyData = {};
   const formatMonthKey = (date) =>
     `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
@@ -45,7 +44,6 @@ export async function loader() {
     );
   };
 
-  // Son 6 ayın anahtarlarını oluştur
   for (let i = 5; i >= 0; i--) {
     const d = new Date();
     d.setMonth(d.getMonth() - i);
@@ -57,7 +55,7 @@ export async function loader() {
     };
   }
 
-  // Eklenenleri ay bazında topla
+ 
   for (const item of recentItems) {
     const key = formatMonthKey(new Date(item.createdAt));
     if (monthlyData[key]) {
@@ -66,7 +64,6 @@ export async function loader() {
     }
   }
 
-  // Atılanları ay bazında topla
   for (const log of recentWaste) {
     const key = formatMonthKey(new Date(log.loggedAt));
     if (monthlyData[key]) {
@@ -74,14 +71,14 @@ export async function loader() {
     }
   }
 
-  // Round
+
   const chartData = Object.values(monthlyData).map((m) => ({
     month: m.month,
     Eklenen: Math.round(m.Eklenen),
     Atılan: Math.round(m.Atılan),
   }));
 
-  // En çok atılan ürünler (top 5)
+  
   const wasteByName = {};
   for (const log of recentWaste) {
     const name = log.item.name;
@@ -97,7 +94,7 @@ export async function loader() {
 
   // Lokasyon bazında aktif stok
   const activeItems = await prisma.item.findMany({
-    where: { consumedAt: null },
+    where: { consumedAt: null, userId },
     include: { location: true },
   });
 
@@ -113,7 +110,6 @@ export async function loader() {
       : 0;
   }
 
-  // Genel sayılar
   const totalAdded = chartData.reduce((sum, m) => sum + m.Eklenen, 0);
   const totalWasted = chartData.reduce((sum, m) => sum + m.Atılan, 0);
   const wasteRate = totalAdded > 0 ? (totalWasted / totalAdded) * 100 : 0;
@@ -141,7 +137,6 @@ export default function Stats() {
         <p className="text-sm text-slate-500">Son 6 ayın mutfak özet bilgileri</p>
       </div>
 
-      {/* Üst özet kartları */}
       <div className="grid grid-cols-4 gap-4 mb-8">
         <SummaryCard
           label="Toplam Harcama"
@@ -165,7 +160,6 @@ export default function Stats() {
         />
       </div>
 
-      {/* Bar Chart — Aylık karşılaştırma */}
       <section className="mb-8">
         <h3 className="text-base font-semibold text-slate-800 mb-3">
           Aylık Karşılaştırma

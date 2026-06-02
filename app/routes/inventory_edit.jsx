@@ -34,9 +34,9 @@ const ItemSchema = z.object({
 });
 
 export async function action({ request, params }) {
+  const userId = await requireUserId(request);
   const formData = await request.formData();
   const raw = Object.fromEntries(formData);
-
   const result = ItemSchema.safeParse(raw);
 
   if (!result.success) {
@@ -48,6 +48,14 @@ export async function action({ request, params }) {
   }
 
   const data = result.data;
+
+  const existing = await prisma.item.findFirst({
+    where: { id: params.itemId, userId },
+  });
+
+  if (!existing) {
+    throw new Response("Ürün bulunamadı", { status: 404 });
+  }
 
   await prisma.item.update({
     where: { id: params.itemId },

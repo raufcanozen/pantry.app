@@ -10,7 +10,7 @@ export function meta() {
 export async function loader({request}) {
   const userId = await requireUserId(request);
   const items = await prisma.item.findMany({
-    where: { consumedAt: null },
+    where: { consumedAt: null, userId },
     select: { name: true },
   });
 
