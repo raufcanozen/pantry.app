@@ -35,15 +35,16 @@ export async function loader({ request }) {
     });
 
     entries = items.map((item) => ({
-      id: item.id,
-      name: item.name,
-      quantity: item.quantity,
-      unit: item.unit,
-      location: item.location.name,
-      cost: item.unitPrice ? item.quantity * item.unitPrice : null,
-      date: item.createdAt,
-    }));
-  } else {
+  id: item.id,
+  name: item.name,
+  quantity: item.purchaseQuantity ?? item.quantity,
+  unit: item.unit,
+  location: item.location.name,
+  cost: item.purchasePrice,
+  date: item.createdAt,
+      }));
+    } 
+      else {
     const logs = await prisma.wasteLog.findMany({
       where: { loggedAt: { gte: since }, userId,},
       include: {

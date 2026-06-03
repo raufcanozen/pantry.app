@@ -103,7 +103,6 @@ export default function WasteItem() {
 
   const errors = actionData?.errors || {};
   const values = actionData?.values || {};
-
   const totalCost = item.unitPrice ? item.quantity * item.unitPrice : null;
 
   return (

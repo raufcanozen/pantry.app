@@ -57,17 +57,19 @@ export async function action({ request, params }) {
     throw new Response("Ürün bulunamadı", { status: 404 });
   }
 
-  await prisma.item.update({
-    where: { id: params.itemId },
-    data: {
-      name: data.name,
-      quantity: data.quantity,
-      unit: data.unit,
-      unitPrice: data.unitPrice,
-      locationId: data.locationId,
-      expiryDate: new Date(data.expiryDate),
-    },
-  });
+ await prisma.item.update({
+  where: { id: params.itemId },
+  data: {
+    name: data.name,
+    quantity: data.quantity,
+    unit: data.unit,
+    unitPrice: data.unitPrice,
+    purchasePrice: data.quantity * data.unitPrice,
+    purchaseQuantity: data.quantity,
+    locationId: data.locationId,
+    expiryDate: new Date(data.expiryDate),
+  },
+});
 
   return redirect("/inventory");
 }

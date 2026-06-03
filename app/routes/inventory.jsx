@@ -216,10 +216,10 @@ function ItemRow({ item }) {
       <div className="text-sm text-slate-600">
     {item.quantity} {item.unit}
       </div>
-  {item.unitPrice && (
-       <div className="text-xs text-slate-500 mt-0.5">
-      {(item.quantity * item.unitPrice).toFixed(2)} TL
-       </div>
+  {item.purchasePrice !== null && (
+  <div className="text-xs text-slate-500 mt-0.5">
+    {item.purchasePrice.toFixed(2)} TL
+  </div>
   )}
      </div>
 
