@@ -40,8 +40,7 @@ export async function loader({ request }) {
   });
   
   const weeklyAddedCost = recentItems.reduce((sum, item) => {
-    const cost = item.unitPrice ? item.quantity * item.unitPrice : 0;
-    return sum + cost;
+  return sum + (item.purchasePrice || 0);
   }, 0);
 
   // Son 7 günde atılan ürünlerin maliyeti

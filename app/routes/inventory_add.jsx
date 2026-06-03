@@ -41,17 +41,19 @@ export async function action({ request }) {
 
   const data = result.data;
 
-  await prisma.item.create({
-    data: {
-      name: data.name,
-      quantity: data.quantity,
-      unit: data.unit,
-      unitPrice: data.unitPrice,
-      locationId: data.locationId,
-      expiryDate: new Date(data.expiryDate),
-      userId,
-    },
-  });
+ await prisma.item.create({
+  data: {
+    name: data.name,
+    quantity: data.quantity,
+    unit: data.unit,
+    unitPrice: data.unitPrice,
+    purchasePrice: data.quantity * data.unitPrice,
+    purchaseQuantity: data.quantity,
+    locationId: data.locationId,
+    expiryDate: new Date(data.expiryDate),
+    userId,
+  },
+});
 
   return redirect("/inventory");
 }

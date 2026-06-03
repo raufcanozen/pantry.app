@@ -21,6 +21,7 @@ export async function loader({request}) {
       createdAt: true,
       quantity: true,
       unitPrice: true,
+      purchasePrice: true,
       consumedAt: true,
     },
   });
@@ -57,12 +58,11 @@ export async function loader({request}) {
 
  
   for (const item of recentItems) {
-    const key = formatMonthKey(new Date(item.createdAt));
-    if (monthlyData[key]) {
-      const cost = item.unitPrice ? item.quantity * item.unitPrice : 0;
-      monthlyData[key].Eklenen += cost;
-    }
+  const key = formatMonthKey(new Date(item.createdAt));
+  if (monthlyData[key]) {
+    monthlyData[key].Eklenen += item.purchasePrice || 0;
   }
+}
 
   for (const log of recentWaste) {
     const key = formatMonthKey(new Date(log.loggedAt));
@@ -100,15 +100,13 @@ export async function loader({request}) {
 
   const stockByLocation = {};
   for (const item of activeItems) {
-    const locName = item.location.name;
-    if (!stockByLocation[locName]) {
-      stockByLocation[locName] = { count: 0, value: 0 };
-    }
-    stockByLocation[locName].count += 1;
-    stockByLocation[locName].value += item.unitPrice
-      ? item.quantity * item.unitPrice
-      : 0;
+  const locName = item.location.name;
+  if (!stockByLocation[locName]) {
+    stockByLocation[locName] = { count: 0, value: 0 };
   }
+  stockByLocation[locName].count += 1;
+  stockByLocation[locName].value += item.purchasePrice || 0;
+}
 
   const totalAdded = chartData.reduce((sum, m) => sum + m.Eklenen, 0);
   const totalWasted = chartData.reduce((sum, m) => sum + m.Atılan, 0);
