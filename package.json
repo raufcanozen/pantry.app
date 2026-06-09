@@ -6,7 +6,8 @@
   "build": "prisma generate && react-router build",
   "dev": "react-router dev",
   "start": "react-router-serve ./build/server/index.js",
-  "typecheck": "react-router typegen && tsc"
+  "typecheck": "react-router typegen && tsc",
+  "postinstall": "prisma generate || true"
 },
   "dependencies": {
     "@prisma/client": "^5.22.0",
